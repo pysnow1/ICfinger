@@ -29,7 +29,7 @@ class ModbusPacket:
         if unit_id != self.unit_id:
             raise ModbusError('意外的单元ID; 回复: {}'.format(packet))
         elif func_code != self.func_code:
-            raise ModbusError('意外的功能码; 回复: {}'.format(packet))
+            raise ModbusError('返回异常状态码; 回复: {}'.format(packet))
         elif len(packet) < 6 + length:
             raise ModbusError('响应太短')
 

@@ -1,75 +1,128 @@
 import argparse
+import ipaddress
+import json
 import os
+import socket
+import struct
 import sys
+import time
 
-banner = '''Usage: main.py [options]
+from core.scan.mod_scan import mod_scan
+from core.pretty.parse_ip import parse_ip_range
+from core.pretty.render import render_to_html
+from prettytable import PrettyTable
 
-Options:
-  -t, --target    目标IP地址
-  -p, --port      目标Modbus端口号，默认502
-  -f, --file      指定url.txt用于批量指纹识别
-  -o, --output    输出目录，默认为./output
-  -h, --help      显示此帮助信息并退出'''
+GREEN = '\033[92m'
+YELLOW = '\033[93m'
+RESET = '\033[0m'
+ORANGE = '\033[91m'
+
+banner = rf'''
+_______________________________________________
+{GREEN}
+  _____ _____  ___                       
+ |_   _/ ____|/ __)                      
+   | || |    | |_ _ _ __   __ _  ___ _ __ 
+   | || |    |  _| | '_ \ / _` |/ _ \ '__|
+  _| || |____| | | | | | | (_| |  __/ |   
+ |_____\_____|_| |_|_| |_|\__, |\___|_|   
+                           __/ |          
+                          |___/           
+{RESET}
+        ICfinger ver1.2 by pysnow
+
+_______________________________________________
+'''
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="工业资产识别工具", formatter_class=argparse.RawTextHelpFormatter,
-                                     usage=banner)
-    parser.add_argument('-t', '--target', type=str, required=True, help='目标IP地址')
-    parser.add_argument('-p', '--port', type=int, default=502, help='目标Modbus端口号，默认502')
-    parser.add_argument('-f', '--file', type=str, help='指定url.txt用于批量指纹识别')
-    parser.add_argument('-o', '--output', type=str, default='./output', help='输出目录，默认为./output')
-    return parser.parse_args()
+def print_result(addr, printable_response):
+    table = PrettyTable()
+    table.field_names = ["地址", "信息"]
+    table.add_row([addr, printable_response["fingerprint"]])
+    print(table)
 
 
-def ExtractData():
-    pass
+def print_progress_bar():
+    sys.stdout.write(f'\r{YELLOW}[SCHEDULE]{RESET} ' + YELLOW + "/" + RESET)
+    sys.stdout.flush()
+    time.sleep(0.2)
+    sys.stdout.write(f'\r{YELLOW}[SCHEDULE]{RESET} ' + YELLOW + "-" + RESET)
+    sys.stdout.flush()
+    time.sleep(0.2)
+    sys.stdout.write(f'\r{YELLOW}[SCHEDULE]{RESET} ' + YELLOW + "\\" + RESET)
+    sys.stdout.flush()
+    time.sleep(0.2)
+    sys.stdout.write(f'\r{YELLOW}[SCHEDULE]{RESET} ' + YELLOW + "|" + RESET)
+    sys.stdout.flush()
+    time.sleep(0.2)
+    print()
 
 
 def main():
-    args = parse_args()
+    print(banner)
+    parser = argparse.ArgumentParser(description='施耐德PLC指纹识别工具')
+    parser.add_argument('-t', '--target', type=str, required=True, help='目标IP地址')
+    parser.add_argument('-r', '--rule', type=str, default='./db/rule.json', help='加载指定的规则库json文件')
+    parser.add_argument('-o', '--output', default=None, help='指定输出扫描结果文件位置')
 
-    # 检查输出目录是否存在，不存在则创建
-    if not os.path.exists(args.output):
-        os.makedirs(args.output)
+    args = parser.parse_args()
 
-    # 单个目标IP地址处理
-    if args.target:
-        print(f"正在处理目标: {args.target}:{args.port}")
-        extractor = ExtractData(ip=args.target, port=args.port)
-        extractor.get_dev_info()
-        # 这里可以将结果保存到输出目录中
-        # 例如：保存到 args.output 目录下的文件中
+    target = args.target
+    rule_file = args.rule
+    output_file = args.output
 
-    # 批量处理目标IP地址
-    elif args.file:
-        if not os.path.exists(args.file):
-            print(f"文件 {args.file} 不存在")
-            sys.exit(1)
-
-        with open(args.file, 'r') as f:
-            targets = f.readlines()
-
-        for target in targets:
-            target = target.strip()
-            if target:
-                print(f"正在处理目标: {target}:{args.port}")
-                extractor = ExtractData(ip=target, port=args.port)
-                extractor.get_dev_info()
-                # 这里可以将结果保存到输出目录中
-                # 例如：保存到 args.output 目录下的文件中
-
+    # 加载规则库
+    if os.path.exists(rule_file):
+        with open(rule_file, 'r') as f:
+            rules = json.load(f)
     else:
-        print("请指定目标IP地址或批量处理文件")
-        sys.exit(1)
+        print(f"规则库文件 {rule_file} 不存在，使用默认规则。")
+        rules = {}
 
-    # 处理指纹规则存储模式
-    if args.mode == 'db':
-        print("使用数据库存储指纹规则")
-        # 这里可以添加使用数据库存储指纹规则的逻辑
-    elif args.mode == 'json':
-        print("使用JSON文件存储指纹规则")
-        # 这里可以添加使用JSON文件存储指纹规则的逻辑
+    results = []
+    try:
+        # 处理目标IP地址
+        if '/' in target:
+            # 解析网段
+            network = ipaddress.IPv4Network(target, strict=False)
+            for ip in network:
+                print_progress_bar()
+                result = mod_scan(str(ip), 502, rules)  # 假设默认端口为502
+                print_result(str(ip), result)
+                results.append(result)
+        elif '-' in target:
+            # 解析IP范围
+            for ip in parse_ip_range(target):
+                print_progress_bar()
+                ip = socket.inet_ntoa(struct.pack('!I', ip))
+                result = mod_scan(str(ip), 502, rules)
+                print_result(str(ip), result)
+                results.append(result)
+        elif ':' in target:
+            # 解析IP和端口
+            print_progress_bar()
+            ip, port = target.split(':')
+            result = mod_scan(ip, int(port), rules)
+            print_result(target, result)
+            results.append(result)
+        else:
+            # 默认端口502
+            print_progress_bar()
+            result = mod_scan(target, 502, rules)
+            print_result(target, result)
+            results.append(result)
+    except KeyboardInterrupt:
+        print("\n扫描中止，正在渲染结果...")
+
+    if output_file is not None:
+        # 渲染结果为HTML
+        html_content = render_to_html(results)
+        # 写入输出文件
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+
+        file_url = 'file://' + os.path.abspath(output_file)
+        print("结果渲染:  " + file_url)
 
 
 if __name__ == '__main__':
