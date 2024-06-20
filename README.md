@@ -26,17 +26,17 @@ options:
 
 **单目标识别**
 
-![img](D:\pythonProject\ICfinger\images\8bfc0f93016641f0f0314510ad0db228.png)
+![img](images\8bfc0f93016641f0f0314510ad0db228.png)
 
 **多目标识别**
 
-![image.png](D:\pythonProject\ICfinger\images\1718923972641-2ca084bf-17b8-4882-a166-80cab9167078.png)
+![image.png](images\1718923972641-2ca084bf-17b8-4882-a166-80cab9167078.png)
 
-![image.png](D:\pythonProject\ICfinger\images\1718923977237-398cedc6-241a-4677-b30b-e642732bf8cc.png)
+![image.png](images\1718923977237-398cedc6-241a-4677-b30b-e642732bf8cc.png)
 
 **结果渲染输出**
 
-![image.png](D:\pythonProject\ICfinger\images\1718924007234-e1f1e7f6-ffd1-4c46-8c26-37e1f6cb7567.png)
+![image.png](images\1718924007234-e1f1e7f6-ffd1-4c46-8c26-37e1f6cb7567.png)
 
 # 参考链接
 
