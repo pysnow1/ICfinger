@@ -9,22 +9,16 @@ Options:
   -p, --port      目标Modbus端口号，默认502
   -f, --file      指定url.txt用于批量指纹识别
   -o, --output    输出目录，默认为./output
-  -d, --data      指定规则目录，用于存储指纹规则
-  -m, --mode      使用数据库存储还是使用json文件存储规则的模式
-                  可选值: {db, json}
   -h, --help      显示此帮助信息并退出'''
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="工业资产识别工具", formatter_class=argparse.RawTextHelpFormatter,
                                      usage=banner)
-    parser.add_argument('-t', '--target', type=str, help='目标IP地址')
+    parser.add_argument('-t', '--target', type=str, required=True, help='目标IP地址')
     parser.add_argument('-p', '--port', type=int, default=502, help='目标Modbus端口号，默认502')
     parser.add_argument('-f', '--file', type=str, help='指定url.txt用于批量指纹识别')
     parser.add_argument('-o', '--output', type=str, default='./output', help='输出目录，默认为./output')
-    parser.add_argument('-d', '--data', type=str, required=True, help='指定规则目录，用于存储指纹规则')
-    parser.add_argument('-m', '--mode', type=str, default='json', choices=['db', 'json'], required=True,
-                        help='使用数据库存储还是使用json文件存储规则的模式')
     return parser.parse_args()
 
 
